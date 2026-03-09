@@ -33,6 +33,7 @@ interface Profile {
 
 interface Slot {
   id: string;
+  barbershop_id: string;
   original_price: number;
   discount_price: number;
   slot_time: string;
