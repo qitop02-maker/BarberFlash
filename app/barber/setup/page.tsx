@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isConfigured } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { MapPin, Scissors, Save, ArrowLeft } from 'lucide-react';
+import { MapPin, Scissors, Save, ArrowLeft, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function BarberSetupPage() {
@@ -26,11 +26,12 @@ export default function BarberSetupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isConfigured) return;
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Não autenticado');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error('Não autenticado');
 
       const { data: shop, error: shopError } = await supabase
         .from('barbershops')
@@ -62,11 +63,22 @@ export default function BarberSetupPage() {
       toast.success('Barbearia cadastrada com sucesso!');
       router.push('/');
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || 'Erro ao salvar');
     } finally {
       setLoading(false);
     }
   };
+
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-black text-center">
+        <AlertCircle className="text-red-500 mb-4" size={48} />
+        <h2 className="text-xl font-bold mb-2">Configuração Necessária</h2>
+        <p className="text-zinc-400 mb-6">Configure as chaves do Supabase para continuar.</p>
+        <button onClick={() => router.push('/')} className="gold-gradient text-black font-bold py-3 px-8 rounded-xl">Voltar</button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black p-6">

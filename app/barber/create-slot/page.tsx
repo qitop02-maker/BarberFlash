@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isConfigured } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { Scissors, Clock, DollarSign, ArrowLeft, Check } from 'lucide-react';
+import { Scissors, Clock, DollarSign, ArrowLeft, Check, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function CreateSlotPage() {
   const [loading, setLoading] = useState(false);
   const [barbershop, setBarbershop] = useState<any>(null);
   const [services, setServices] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -22,33 +23,51 @@ export default function CreateSlotPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return router.push('/auth');
-
-      // Get barbershop
-      const { data: shop } = await supabase
-        .from('barbershops')
-        .select('*')
-        .eq('owner_id', user.id)
-        .single();
-
-      if (!shop) {
-        toast.error('Você precisa cadastrar sua barbearia primeiro');
-        return router.push('/barber/setup');
-      }
-      setBarbershop(shop);
-
-      // Get services
-      const { data: svcs } = await supabase
-        .from('services')
-        .select('*')
-        .eq('barbershop_id', shop.id);
+      if (!isConfigured) return;
       
-      setServices(svcs || []);
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) return router.push('/auth');
+
+        // Get barbershop
+        const { data: shop, error: shopError } = await supabase
+          .from('barbershops')
+          .select('*')
+          .eq('owner_id', user.id)
+          .single();
+
+        if (shopError || !shop) {
+          toast.error('Você precisa cadastrar sua barbearia primeiro');
+          return router.push('/barber/setup');
+        }
+        setBarbershop(shop);
+
+        // Get services
+        const { data: svcs, error: svcsError } = await supabase
+          .from('services')
+          .select('*')
+          .eq('barbershop_id', shop.id);
+        
+        if (svcsError) throw svcsError;
+        setServices(svcs || []);
+      } catch (err: any) {
+        setError(err.message);
+      }
     };
 
     fetchData();
   }, [router]);
+
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-black text-center">
+        <AlertCircle className="text-red-500 mb-4" size={48} />
+        <h2 className="text-xl font-bold mb-2">Configuração Necessária</h2>
+        <p className="text-zinc-400 mb-6">Configure as chaves do Supabase para continuar.</p>
+        <button onClick={() => router.push('/')} className="gold-gradient text-black font-bold py-3 px-8 rounded-xl">Voltar</button>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

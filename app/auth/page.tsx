@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isConfigured } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { Scissors, User, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Scissors, User, Mail, Lock, ArrowRight, AlertCircle, ExternalLink } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function AuthPage() {
@@ -18,6 +18,10 @@ export default function AuthPage() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isConfigured) {
+      toast.error('Supabase não configurado');
+      return;
+    }
     setLoading(true);
 
     try {
@@ -46,11 +50,47 @@ export default function AuthPage() {
       }
       router.push('/');
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || 'Falha na autenticação');
     } finally {
       setLoading(false);
     }
   };
+
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-black text-center">
+        <div className="w-20 h-20 rounded-3xl bg-red-500/10 flex items-center justify-center text-red-500 mb-6">
+          <AlertCircle size={48} />
+        </div>
+        <h2 className="text-2xl font-display font-bold mb-2">Configuração Necessária</h2>
+        <p className="text-zinc-400 max-w-xs mb-8">
+          Você precisa configurar as chaves do Supabase no painel de Segredos (Secrets) do AI Studio para usar o BarberFlash.
+        </p>
+        
+        <div className="glass p-6 rounded-2xl w-full max-w-sm text-left space-y-4 mb-8">
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Variáveis Necessárias:</p>
+          <code className="block bg-white/5 p-3 rounded-lg text-xs text-gold">
+            NEXT_PUBLIC_SUPABASE_URL<br/>
+            NEXT_PUBLIC_SUPABASE_ANON_KEY
+          </code>
+          <a 
+            href="https://supabase.com" 
+            target="_blank" 
+            className="flex items-center gap-2 text-sm text-zinc-300 hover:text-white transition-colors"
+          >
+            Criar projeto no Supabase <ExternalLink size={14} />
+          </a>
+        </div>
+
+        <button 
+          onClick={() => window.location.reload()}
+          className="gold-gradient text-black font-bold py-4 px-8 rounded-xl"
+        >
+          Tentar Novamente
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black">

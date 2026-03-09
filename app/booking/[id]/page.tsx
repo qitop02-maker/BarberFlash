@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isConfigured } from '@/lib/supabase';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { Scissors, Clock, MapPin, CreditCard, ArrowLeft, CheckCircle2, QrCode } from 'lucide-react';
+import { Scissors, Clock, MapPin, CreditCard, ArrowLeft, CheckCircle2, QrCode, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -19,49 +19,60 @@ export default function BookingPage() {
 
   useEffect(() => {
     const fetchSlot = async () => {
-      const { data, error } = await supabase
-        .from('slots')
-        .select(`
-          *,
-          barbershop:barbershops(*),
-          service:services(*)
-        `)
-        .eq('id', params.id)
-        .single();
-
-      if (error || !data) {
-        toast.error('Vaga não encontrada');
-        router.push('/');
+      if (!isConfigured) {
+        setLoading(false);
         return;
       }
 
-      if (data.status === 'reserved') {
-        toast.error('Esta vaga já foi reservada');
-        router.push('/');
-        return;
-      }
+      try {
+        const { data, error } = await supabase
+          .from('slots')
+          .select(`
+            *,
+            barbershop:barbershops(*),
+            service:services(*)
+          `)
+          .eq('id', params.id)
+          .single();
 
-      setSlot(data);
-      setLoading(false);
+        if (error || !data) {
+          toast.error('Vaga não encontrada');
+          router.push('/');
+          return;
+        }
+
+        if (data.status === 'reserved') {
+          toast.error('Esta vaga já foi reservada');
+          router.push('/');
+          return;
+        }
+
+        setSlot(data);
+      } catch (err: any) {
+        toast.error('Erro ao carregar detalhes');
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchSlot();
   }, [params.id, router]);
 
   const handlePayment = async () => {
+    if (!isConfigured) return;
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Não autenticado');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error('Não autenticado');
 
       // 1. Check if slot is still available
-      const { data: currentSlot } = await supabase
+      const { data: currentSlot, error: slotError } = await supabase
         .from('slots')
         .select('status')
         .eq('id', slot.id)
         .single();
 
-      if (currentSlot?.status === 'reserved') {
+      if (slotError || currentSlot?.status === 'reserved') {
         throw new Error('Vaga já reservada por outra pessoa');
       }
 
@@ -87,12 +98,23 @@ export default function BookingPage() {
       setStep('success');
       toast.success('Reserva confirmada!');
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || 'Erro ao processar');
       router.push('/');
     } finally {
       setLoading(false);
     }
   };
+
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-black text-center">
+        <AlertCircle className="text-red-500 mb-4" size={48} />
+        <h2 className="text-xl font-bold mb-2">Configuração Necessária</h2>
+        <p className="text-zinc-400 mb-6">Configure as chaves do Supabase para continuar.</p>
+        <button onClick={() => router.push('/')} className="gold-gradient text-black font-bold py-3 px-8 rounded-xl">Voltar</button>
+      </div>
+    );
+  }
 
   if (loading && step === 'details') {
     return (

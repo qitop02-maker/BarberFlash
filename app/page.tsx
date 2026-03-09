@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isConfigured } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { 
   Scissors, 
@@ -16,7 +16,9 @@ import {
   History,
   TrendingUp,
   ChevronRight,
-  Star
+  Star,
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
@@ -53,39 +55,55 @@ export default function HomePage() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [distanceFilter, setDistanceFilter] = useState(10);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/auth');
+      if (!isConfigured) {
+        setError('Configuração Necessária');
+        setLoading(false);
         return;
       }
-      setUser(user);
-      
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      setProfile(profileData);
-      
-      // Fetch slots after profile is loaded
-      const { data: slotsData } = await supabase
-        .from('slots')
-        .select(`
-          *,
-          barbershop:barbershops(*),
-          service:services(*)
-        `)
-        .eq('status', 'available')
-        .gte('slot_time', new Date().toISOString())
-        .order('slot_time', { ascending: true });
-      
-      setSlots(slotsData || []);
-      setLoading(false);
+
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+          router.push('/auth');
+          return;
+        }
+        setUser(user);
+        
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (profileError) throw profileError;
+        setProfile(profileData);
+        
+        // Fetch slots after profile is loaded
+        const { data: slotsData, error: slotsError } = await supabase
+          .from('slots')
+          .select(`
+            *,
+            barbershop:barbershops(*),
+            service:services(*)
+          `)
+          .eq('status', 'available')
+          .gte('slot_time', new Date().toISOString())
+          .order('slot_time', { ascending: true });
+        
+        if (slotsError) throw slotsError;
+        setSlots(slotsData || []);
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || 'Erro de conexão');
+        toast.error('Falha ao conectar com o servidor');
+      } finally {
+        setLoading(false);
+      }
     };
 
     checkUser();
@@ -119,6 +137,48 @@ export default function HomePage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (error || !isConfigured) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-black text-center">
+        <div className="w-20 h-20 rounded-3xl bg-red-500/10 flex items-center justify-center text-red-500 mb-6">
+          <AlertCircle size={48} />
+        </div>
+        <h2 className="text-2xl font-display font-bold mb-2">
+          {!isConfigured ? 'Configuração do Supabase' : 'Erro de Conexão'}
+        </h2>
+        <p className="text-zinc-400 max-w-xs mb-8">
+          {!isConfigured 
+            ? 'Você precisa configurar as chaves do Supabase no painel de Segredos (Secrets) do AI Studio.'
+            : 'Não foi possível conectar ao banco de dados. Verifique suas chaves e conexão.'}
+        </p>
+        
+        {!isConfigured && (
+          <div className="glass p-6 rounded-2xl w-full max-w-sm text-left space-y-4 mb-8">
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Variáveis Necessárias:</p>
+            <code className="block bg-white/5 p-3 rounded-lg text-xs text-gold">
+              NEXT_PUBLIC_SUPABASE_URL<br/>
+              NEXT_PUBLIC_SUPABASE_ANON_KEY
+            </code>
+            <a 
+              href="https://supabase.com" 
+              target="_blank" 
+              className="flex items-center gap-2 text-sm text-zinc-300 hover:text-white transition-colors"
+            >
+              Criar projeto no Supabase <ExternalLink size={14} />
+            </a>
+          </div>
+        )}
+
+        <button 
+          onClick={() => window.location.reload()}
+          className="gold-gradient text-black font-bold py-4 px-8 rounded-xl"
+        >
+          Tentar Novamente
+        </button>
       </div>
     );
   }
