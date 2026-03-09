@@ -13,15 +13,36 @@ export default function BarberSetupPage() {
   const [address, setAddress] = useState('');
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoError('Geolocalização não suportada pelo seu navegador.');
+      return;
+    }
+
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
         setLat(pos.coords.latitude);
         setLng(pos.coords.longitude);
-      });
-    }
+        setGeoError(null);
+      },
+      (err) => {
+        console.error('Geo error:', err);
+        if (err.code === 1) {
+          setGeoError('Permissão de localização negada.');
+        } else {
+          setGeoError('Erro ao detectar localização.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  useEffect(() => {
+    detectLocation();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -123,11 +144,25 @@ export default function BarberSetupPage() {
           </div>
 
           <div className="p-4 glass rounded-2xl">
-            <p className="text-sm text-zinc-400 mb-2">Localização GPS:</p>
-            <div className="flex items-center justify-between text-xs font-mono text-zinc-500">
-              <span>Lat: {lat?.toFixed(6) || 'Detectando...'}</span>
-              <span>Lng: {lng?.toFixed(6) || 'Detectando...'}</span>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-zinc-400">Localização GPS:</p>
+              <button 
+                type="button"
+                onClick={detectLocation}
+                className="text-[10px] uppercase font-bold text-gold hover:underline"
+              >
+                Tentar Novamente
+              </button>
             </div>
+            <div className="flex items-center justify-between text-xs font-mono text-zinc-500">
+              <span>Lat: {lat?.toFixed(6) || (geoError ? 'Erro' : 'Detectando...')}</span>
+              <span>Lng: {lng?.toFixed(6) || (geoError ? 'Erro' : 'Detectando...')}</span>
+            </div>
+            {geoError && (
+              <p className="text-[10px] text-red-500 mt-2 flex items-center gap-1">
+                <AlertCircle size={10} /> {geoError}
+              </p>
+            )}
           </div>
 
           <button 

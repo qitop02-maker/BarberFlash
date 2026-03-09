@@ -136,9 +136,16 @@ export default function HomePage() {
     
     // Get location
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      });
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        (err) => {
+          console.error('Geo error in Home:', err);
+          // If location fails, we just don't filter by distance or show distances
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 } // 5 min cache
+      );
     }
   }, [router]);
 
