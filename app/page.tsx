@@ -57,6 +57,7 @@ export default function HomePage() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'home' | 'history' | 'favorites' | 'profile'>('home');
+  const [searchTerm, setSearchTerm] = useState('');
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [distanceFilter, setDistanceFilter] = useState(10);
   const [error, setError] = useState<string | null>(null);
@@ -295,6 +296,8 @@ export default function HomePage() {
                     <input 
                       type="text" 
                       placeholder="Buscar barbearia ou serviço..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-gold transition-colors"
                     />
                   </div>
@@ -326,7 +329,12 @@ export default function HomePage() {
                     </div>
                   ) : (
                     <div className="grid gap-4">
-                      {slots.map((slot) => {
+                      {slots
+                        .filter(slot => 
+                          slot.barbershop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          slot.service.name.toLowerCase().includes(searchTerm.toLowerCase())
+                        )
+                        .map((slot) => {
                         const dist = location ? calculateDistance(location.lat, location.lng, slot.barbershop.latitude, slot.barbershop.longitude) : null;
                         if (dist && dist > distanceFilter) return null;
 
@@ -437,69 +445,176 @@ export default function HomePage() {
                 )}
               </div>
             )}
-          </>
-        ) : (
-          /* Barber Dashboard */
-          <div className="space-y-8">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="glass p-6 rounded-3xl space-y-2">
-                <TrendingUp className="text-neon" size={24} />
-                <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest">Faturamento</p>
-                <p className="text-2xl font-bold">R$ 1.240</p>
-              </div>
-              <div className="glass p-6 rounded-3xl space-y-2">
-                <History className="text-gold" size={24} />
-                <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest">Reservas</p>
-                <p className="text-2xl font-bold">28</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold">Vagas Ativas</h2>
-                <button 
-                  onClick={() => router.push('/barber/create-slot')}
-                  className="bg-white text-black px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2"
-                >
-                  <Plus size={18} />
-                  Nova Vaga
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {/* Mocked active slots for barber */}
-                {[1, 2].map((i) => (
-                  <div key={i} className="glass p-4 rounded-2xl flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-gold">
-                        <Scissors size={24} />
+            {activeTab === 'profile' && (
+                  <div className="space-y-6">
+                    <h2 className="text-2xl font-display font-bold">Meu Perfil</h2>
+                    <div className="glass p-8 rounded-3xl text-center space-y-4">
+                      <div className="w-24 h-24 rounded-full gold-gradient mx-auto flex items-center justify-center text-black text-3xl font-bold">
+                        {profile?.name?.charAt(0) || 'U'}
                       </div>
                       <div>
-                        <p className="font-bold">Corte Masculino</p>
-                        <p className="text-xs text-zinc-500">Hoje às 15:30 • R$35</p>
+                        <h3 className="text-xl font-bold">{profile?.name}</h3>
+                        <p className="text-zinc-500">{user?.email}</p>
+                        <div className="mt-2 inline-block px-3 py-1 bg-gold/10 text-gold rounded-full text-xs font-bold uppercase tracking-widest">
+                          Cliente BarberFlash
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] uppercase font-bold tracking-widest text-neon bg-neon/10 px-2 py-1 rounded-md">Ativa</span>
+
+                    <div className="space-y-3">
+                      <button className="w-full glass p-4 rounded-2xl flex items-center justify-between hover:bg-white/5 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <UserIcon size={20} className="text-zinc-400" />
+                          <span className="font-medium">Editar Perfil</span>
+                        </div>
+                        <ChevronRight size={18} className="text-zinc-600" />
+                      </button>
+                      <button className="w-full glass p-4 rounded-2xl flex items-center justify-between hover:bg-white/5 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <AlertCircle size={20} className="text-zinc-400" />
+                          <span className="font-medium">Notificações</span>
+                        </div>
+                        <ChevronRight size={18} className="text-zinc-600" />
+                      </button>
+                      <button 
+                        onClick={handleLogout}
+                        className="w-full glass p-4 rounded-2xl flex items-center justify-between hover:bg-red-500/5 text-red-500 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <LogOut size={20} />
+                          <span className="font-medium">Sair da Conta</span>
+                        </div>
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h2 className="text-lg font-bold">Próximas Reservas</h2>
-              <div className="space-y-3">
-                <div className="glass p-4 rounded-2xl border-l-4 border-gold">
-                  <div className="flex justify-between mb-2">
-                    <p className="font-bold">João Silva</p>
-                    <p className="text-gold font-bold">14:00</p>
+                )}
+              </>
+        ) : (
+          /* Barber Dashboard */
+          <>
+            {activeTab === 'home' && (
+              <div className="space-y-8">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="glass p-6 rounded-3xl space-y-2">
+                    <TrendingUp className="text-neon" size={24} />
+                    <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest">Faturamento</p>
+                    <p className="text-2xl font-bold">R$ 1.240</p>
                   </div>
-                  <p className="text-sm text-zinc-400">Corte + Barba • Pago via Pix</p>
+                  <div className="glass p-6 rounded-3xl space-y-2">
+                    <History className="text-gold" size={24} />
+                    <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest">Reservas</p>
+                    <p className="text-2xl font-bold">28</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-bold">Vagas Ativas</h2>
+                    <button 
+                      onClick={() => router.push('/barber/create-slot')}
+                      className="bg-white text-black px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2"
+                    >
+                      <Plus size={18} />
+                      Nova Vaga
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {/* Mocked active slots for barber */}
+                    {[1, 2].map((i) => (
+                      <div key={i} className="glass p-4 rounded-2xl flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-gold">
+                            <Scissors size={24} />
+                          </div>
+                          <div>
+                            <p className="font-bold">Corte Masculino</p>
+                            <p className="text-xs text-zinc-500">Hoje às 15:30 • R$35</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] uppercase font-bold tracking-widest text-neon bg-neon/10 px-2 py-1 rounded-md">Ativa</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h2 className="text-lg font-bold">Próximas Reservas</h2>
+                  <div className="space-y-3">
+                    <div className="glass p-4 rounded-2xl border-l-4 border-gold">
+                      <div className="flex justify-between mb-2">
+                        <p className="font-bold">João Silva</p>
+                        <p className="text-gold font-bold">14:00</p>
+                      </div>
+                      <p className="text-sm text-zinc-400">Corte + Barba • Pago via Pix</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            )}
+
+            {activeTab === 'history' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-display font-bold">Histórico de Reservas</h2>
+                <div className="text-center py-12 glass rounded-3xl">
+                  <History className="mx-auto text-zinc-600 mb-4" size={48} />
+                  <p className="text-zinc-400">Nenhum histórico de reservas concluídas.</p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'favorites' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-display font-bold">Meus Clientes</h2>
+                <div className="text-center py-12 glass rounded-3xl">
+                  <Star className="mx-auto text-zinc-600 mb-4" size={48} />
+                  <p className="text-zinc-400">Você ainda não tem clientes favoritos.</p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'profile' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-display font-bold">Perfil da Barbearia</h2>
+                <div className="glass p-8 rounded-3xl text-center space-y-4">
+                  <div className="w-24 h-24 rounded-full gold-gradient mx-auto flex items-center justify-center text-black text-3xl font-bold">
+                    {profile?.name?.charAt(0) || 'B'}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">{profile?.name}</h3>
+                    <p className="text-zinc-500">{user?.email}</p>
+                    <div className="mt-2 inline-block px-3 py-1 bg-gold/10 text-gold rounded-full text-xs font-bold uppercase tracking-widest">
+                      Barbeiro Profissional
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <button 
+                    onClick={() => router.push('/barber/setup')}
+                    className="w-full glass p-4 rounded-2xl flex items-center justify-between hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <LayoutDashboard size={20} className="text-zinc-400" />
+                      <span className="font-medium">Configurações da Loja</span>
+                    </div>
+                    <ChevronRight size={18} className="text-zinc-600" />
+                  </button>
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full glass p-4 rounded-2xl flex items-center justify-between hover:bg-red-500/5 text-red-500 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <LogOut size={20} />
+                      <span className="font-medium">Sair da Conta</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </main>
 
