@@ -30,7 +30,7 @@ export default function AuthPage() {
         if (error) throw error;
         toast.success('Bem-vindo de volta!');
       } else {
-        const { data, error: signUpError } = await supabase.auth.signUp({ 
+        const { error: signUpError } = await supabase.auth.signUp({ 
           email, 
           password,
           options: {
@@ -38,14 +38,6 @@ export default function AuthPage() {
           }
         });
         if (signUpError) throw signUpError;
-        
-        if (data.user) {
-          // Create profile record
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([{ id: data.user.id, name, email, role }]);
-          if (profileError) throw profileError;
-        }
         toast.success('Conta criada com sucesso!');
       }
       router.push('/');
