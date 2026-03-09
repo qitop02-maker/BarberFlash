@@ -23,6 +23,13 @@ export default function BarberSetupPage() {
     }
 
     setGeoError(null);
+    
+    const options = {
+      enableHighAccuracy: false, // Changed to false for better compatibility in iframes
+      timeout: 15000, // Increased timeout
+      maximumAge: 0
+    };
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLat(pos.coords.latitude);
@@ -32,12 +39,14 @@ export default function BarberSetupPage() {
       (err) => {
         console.error('Geo error:', err);
         if (err.code === 1) {
-          setGeoError('Permissão de localização negada.');
+          setGeoError('Permissão de localização negada. Verifique as configurações do seu navegador e se o site tem permissão.');
+        } else if (err.code === 3) {
+          setGeoError('Tempo esgotado ao tentar obter localização.');
         } else {
           setGeoError('Erro ao detectar localização.');
         }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      options
     );
   };
 
@@ -155,23 +164,34 @@ export default function BarberSetupPage() {
               </button>
             </div>
             <div className="flex items-center justify-between text-xs font-mono text-zinc-500">
-              <span>Lat: {lat?.toFixed(6) || (geoError ? 'Erro' : 'Detectando...')}</span>
-              <span>Lng: {lng?.toFixed(6) || (geoError ? 'Erro' : 'Detectando...')}</span>
+              <span>Lat: {lat?.toFixed(6) || (geoError ? '---' : 'Detectando...')}</span>
+              <span>Lng: {lng?.toFixed(6) || (geoError ? '---' : 'Detectando...')}</span>
             </div>
             {geoError && (
-              <p className="text-[10px] text-red-500 mt-2 flex items-center gap-1">
-                <AlertCircle size={10} /> {geoError}
-              </p>
+              <div className="mt-2 space-y-1">
+                <p className="text-[10px] text-red-400 flex items-center gap-1">
+                  <AlertCircle size={10} /> {geoError}
+                </p>
+                <p className="text-[9px] text-zinc-500 leading-tight">
+                  Dica: Se estiver no navegador, clique no ícone de cadeado na barra de endereço e verifique se a localização está permitida para este site.
+                </p>
+              </div>
             )}
           </div>
 
           <button 
-            disabled={loading || !lat}
+            disabled={loading}
             className="w-full gold-gradient text-black font-bold py-5 rounded-2xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform disabled:opacity-50"
           >
             {loading ? 'Salvando...' : 'Salvar e Continuar'}
             {!loading && <Save size={20} />}
           </button>
+          {!lat && !geoError && (
+            <p className="text-center text-[10px] text-zinc-500">Aguardando localização para melhor precisão...</p>
+          )}
+          {!lat && geoError && (
+            <p className="text-center text-[10px] text-amber-500/70 italic">Você pode continuar sem GPS, mas sua barbearia não aparecerá nas buscas por proximidade.</p>
+          )}
         </form>
       </motion.div>
     </div>
