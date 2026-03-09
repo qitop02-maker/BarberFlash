@@ -1,0 +1,5 @@
+{
+  "name": "BarberFlash",
+  "description": "Corte de última hora com preço de promoção. Conectando barbearias e clientes para horários vagos.",
+  "requestFramePermissions": ["geolocation"]
+}
